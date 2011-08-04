@@ -33,10 +33,16 @@ class MyApp(wx.App):
         self._panel = xrc.XRCCTRL (self._frame, 'MainPanel')
         self._panel.SetScrollbars(20,20,0,0)
         self._panel.SetVirtualSize ((1200,800))
+
+        self._toolbar = xrc.XRCCTRL (self._frame, 'MyToolBar')
+        self._menubar = xrc.XRCCTRL (self._frame, 'MyMenuBar')
+        self._statusbar = xrc.XRCCTRL (self._frame, 'MyStatusBar')
         
         self._panel.Bind(wx.EVT_PAINT,self.OnPaint)
         self._panel.Bind(wx.EVT_MOUSE_EVENTS, self._print_cell)
 
+
+        
         self._frame.SetSize ((800,600))
         self._panel.FitInside()
         self._frame.SetTitle ("Stitchy Studio")
