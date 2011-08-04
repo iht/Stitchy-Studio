@@ -34,23 +34,21 @@ class MyApp(wx.App):
         self._panel.SetScrollbars(20,20,0,0)
         self._panel.SetVirtualSize ((1200,800))
 
-        self._toolbar = xrc.XRCCTRL (self._frame, 'MyToolBar')
-        self._menubar = xrc.XRCCTRL (self._frame, 'MyMenuBar')
-        self._statusbar = xrc.XRCCTRL (self._frame, 'MyStatusBar')
+        self._toolbar = self._frame.GetToolBar()
+        self._menubar = self._frame.GetMenuBar()
+        self._statusbar = self._frame.GetStatusBar()
         
-        self._panel.Bind(wx.EVT_PAINT,self.OnPaint)
+        self._panel.Bind(wx.EVT_PAINT, self.OnPaint)
         self._panel.Bind(wx.EVT_MOUSE_EVENTS, self._print_cell)
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom_out, id = xrc.XRCID('zoomout'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom_in, id = xrc.XRCID('zoomin'))
 
-
-        
         self._frame.SetSize ((800,600))
         self._panel.FitInside()
         self._frame.SetTitle ("Stitchy Studio")
         
         self.SetTopWindow (self._frame)
         self._frame.Show()
-
-        #self._frame.SetScrollbar(wx.VERTICAL,0,20,1024)
         
     def _print_cell (self, event):
 
@@ -65,6 +63,25 @@ class MyApp(wx.App):
                 
         event.Skip()
 
+    def _set_zoom_out (self, event):
+
+        self._grid.decrease_zoom()
+        size = self._grid.get_size()
+        #self._panel.SetVirtualSize(size)
+        self._panel.SetScrollbars(20,20,0,0)
+        self._panel.FitInside()
+        self._panel.Refresh()
+        event.Skip()
+
+    def _set_zoom_in (self, event):
+
+        self._grid.increase_zoom()
+        size = self._grid.get_size()
+        #self._panel.SetVirtualSize(size)
+        self._panel.SetScrollbars(20,20,0,0)
+        self._panel.FitInside()
+        self._panel.Refresh()
+        event.Skip()
             
 class Grid:
 
@@ -76,13 +93,29 @@ class Grid:
         self._xsize = 1200
         self._ysize = 800
         
-        self._zoom_factor = 1
+        self._zoom_factor = 100        
 
         self._cells = zeros ((self._xcells, self._ycells), dtype=numpy.bool)
-        
+
+    def decrease_zoom (self):
+
+        self._zoom_factor = self._zoom_factor - 50
+        self._xsize = self._xsize - 50
+        self._ysize = self._ysize - 50
+
+    def increase_zoom (self):
+
+        self._zoom_factor = self._zoom_factor + 50
+        self._xsize = self._xsize + 50
+        self._ysize = self._ysize + 50
+
+    def get_size (self):
+
+        return (self._xsize, self._ysize)
+    
     def draw_grid(self, dc):
 
-        step = self._xsize / self._xcells * self._zoom_factor
+        step = self._xsize / self._xcells * self._zoom_factor / 100
         boldstep = step * 10
 
         # Vertical lines
@@ -114,18 +147,22 @@ class Grid:
             
     def add_cell (self, x, y, dc):
 
-        xcell = int(x/10)
-        ycell = int(y/10)
+        step = self._xsize / self._xcells * self._zoom_factor / 100
+        
+        xcell = int(x/step)
+        ycell = int(y/step)
 
         self._cells[xcell][ycell] = True        
         self._paint_cell (xcell, ycell, dc)
 
     def _paint_cell (self, xcell, ycell, dc):
 
-        px = xcell*10
-        py = ycell*10
+        step = self._xsize / self._xcells * self._zoom_factor / 100
+
+        px = xcell * step
+        py = ycell * step
         
         dc.SetPen (wx.RED_PEN)
         dc.SetBrush (wx.RED_BRUSH)
 
-        dc.DrawRectangle(px+1,py+1,8,8)
+        dc.DrawRectangle(px+1,py+1,step - 2,step - 2)
