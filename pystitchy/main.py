@@ -52,12 +52,12 @@ class MyApp(wx.App):
         
     def _print_cell (self, event):
 
-        mousex = event.GetX()
-        mousey = event.GetY()
-        
+        mousex, mousey = self._panel.CalcUnscrolledPosition(event.GetX(), event.GetY())
+               
         if event.ButtonDown(wx.MOUSE_BTN_LEFT) or event.Dragging():
 
             dc = wx.ClientDC (event.GetEventObject())
+            self._panel.DoPrepareDC (dc)
 
             self._grid.add_cell (mousex, mousey, dc)
                 
@@ -65,21 +65,19 @@ class MyApp(wx.App):
 
     def _set_zoom_out (self, event):
 
-        self._grid.decrease_zoom()
+        zoom = self._grid.decrease_zoom()
         size = self._grid.get_size()
-        #self._panel.SetVirtualSize(size)
-        self._panel.SetScrollbars(20,20,0,0)
-        self._panel.FitInside()
+        self._panel.SetVirtualSize(size)
+        self._panel.SetScrollRate(zoom/10, zoom/10)
         self._panel.Refresh()
         event.Skip()
 
     def _set_zoom_in (self, event):
 
-        self._grid.increase_zoom()
+        zoom = self._grid.increase_zoom()
         size = self._grid.get_size()
-        #self._panel.SetVirtualSize(size)
-        self._panel.SetScrollbars(20,20,0,0)
-        self._panel.FitInside()
+        self._panel.SetVirtualSize(size)
+        self._panel.SetScrollRate(zoom/10, zoom/10)
         self._panel.Refresh()
         event.Skip()
             
@@ -103,11 +101,15 @@ class Grid:
         self._xsize = self._xsize - 50
         self._ysize = self._ysize - 50
 
+        return self._zoom_factor
+
     def increase_zoom (self):
 
         self._zoom_factor = self._zoom_factor + 50
         self._xsize = self._xsize + 50
         self._ysize = self._ysize + 50
+
+        return self._zoom_factor
 
     def get_size (self):
 
@@ -120,24 +122,33 @@ class Grid:
 
         # Vertical lines
         dc.SetPen (wx.Pen(wx.LIGHT_GREY, 1))
-        for x in range(0,self._xsize + step, step):
-            dc.DrawLine(x, 0, x, self._ysize)
+        for x in range(self._xcells+1):
+            xsize = x*step
+            ysize = step * self._ycells
+            dc.DrawLine(xsize, 0, xsize, ysize)
 
         # Draw bold lines
         dc.SetPen (wx.Pen(wx.BLACK,3))
-        for x in range(0, self._xsize + boldstep, boldstep):
-            dc.DrawLine(x, 0, x, self._ysize)
+        for x in range((self._xcells)/10+1):
+            xsize = x*boldstep
+            ysize = step * self._ycells
+            dc.DrawLine(xsize, 0, xsize, ysize)
 
             
         # Horizontal lines
         dc.SetPen (wx.Pen(wx.LIGHT_GREY, 1))
-        for y in range(0, self._ysize + step, step):
-            dc.DrawLine(0, y, self._xsize, y)
+
+        for y in range(self._ycells+1):
+            ysize = y*step
+            xsize = self._xcells*step
+            dc.DrawLine(0, ysize, xsize, ysize)
 
         # Draw bold lines
         dc.SetPen (wx.Pen(wx.BLACK,3))
-        for y in range(0, self._ysize + boldstep, boldstep):
-            dc.DrawLine(0, y, self._xsize, y)
+        for y in range((self._ycells)/10+1):
+            ysize = y*boldstep
+            xsize = self._xcells*step
+            dc.DrawLine(0, ysize, xsize, ysize)
 
         for x in range(self._xcells):
             for y in range(self._ycells):
