@@ -8,7 +8,7 @@ class MyApp(wx.App):
     def __init__ (self, xrcfn):
 
         self._xrcfn = xrcfn
-
+        self._scroll_rate = 10
         self._grid = Grid()
         
         wx.App.__init__ (self)
@@ -31,7 +31,7 @@ class MyApp(wx.App):
     def _init_frame (self):
         self._frame = self._res.LoadFrame (None,'MyMainFrame')
         self._panel = xrc.XRCCTRL (self._frame, 'MainPanel')
-        self._panel.SetScrollbars(20,20,0,0)
+        self._panel.SetScrollRate (self._scroll_rate, self._scroll_rate)
         self._panel.SetVirtualSize ((1200,800))
 
         self._toolbar = self._frame.GetToolBar()
@@ -40,8 +40,8 @@ class MyApp(wx.App):
         
         self._panel.Bind(wx.EVT_PAINT, self.OnPaint)
         self._panel.Bind(wx.EVT_MOUSE_EVENTS, self._print_cell)
-        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom_out, id = xrc.XRCID('zoomout'))
-        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom_in, id = xrc.XRCID('zoomin'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomout'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomin'))
 
         self._frame.SetSize ((800,600))
         self._panel.FitInside()
@@ -63,26 +63,23 @@ class MyApp(wx.App):
                 
         event.Skip()
 
-    def _set_zoom_out (self, event):
+    def _set_zoom (self, event):
 
-        zoom = self._grid.decrease_zoom()
+        if event.GetId() == xrc.XRCID('zoomout'):
+            self._grid.decrease_zoom()
+        elif event.GetId() == xrc.XRCID('zoomin'):
+            self._grid.increase_zoom()
+
         size = self._grid.get_size()
         self._panel.SetVirtualSize(size)
-        self._panel.SetScrollRate(zoom/10, zoom/10)
+        self._panel.FitInside()
+        
+        self._panel.SetScrollRate(size[0]/10, size[1]/10)
         self._panel.Refresh()
         event.Skip()
-
-    def _set_zoom_in (self, event):
-
-        zoom = self._grid.increase_zoom()
-        size = self._grid.get_size()
-        self._panel.SetVirtualSize(size)
-        self._panel.SetScrollRate(zoom/10, zoom/10)
-        self._panel.Refresh()
-        event.Skip()
-            
+        
 class Grid:
-
+    
     def __init__ (self):
 
         self._xcells = 120
@@ -90,26 +87,20 @@ class Grid:
 
         self._xsize = 1200
         self._ysize = 800
-        
-        self._zoom_factor = 100        
 
+        self._zoom_factor = 100
+        
         self._cells = zeros ((self._xcells, self._ycells), dtype=numpy.bool)
 
     def decrease_zoom (self):
 
-        self._zoom_factor = self._zoom_factor - 50
-        self._xsize = self._xsize - 50
-        self._ysize = self._ysize - 50
-
-        return self._zoom_factor
-
+        self._xsize = self._xsize - self._zoom_factor
+        self._ysize = self._ysize - self._zoom_factor
+        
     def increase_zoom (self):
 
-        self._zoom_factor = self._zoom_factor + 50
-        self._xsize = self._xsize + 50
-        self._ysize = self._ysize + 50
-
-        return self._zoom_factor
+        self._xsize = self._xsize + self._zoom_factor
+        self._ysize = self._ysize + self._zoom_factor
 
     def get_size (self):
 
@@ -117,7 +108,7 @@ class Grid:
     
     def draw_grid(self, dc):
 
-        step = self._xsize / self._xcells * self._zoom_factor / 100
+        step = self._xsize / self._xcells
         boldstep = step * 10
 
         # Vertical lines
@@ -158,7 +149,7 @@ class Grid:
             
     def add_cell (self, x, y, dc):
 
-        step = self._xsize / self._xcells * self._zoom_factor / 100
+        step = self._xsize / self._xcells
         
         xcell = int(x/step)
         ycell = int(y/step)
@@ -168,7 +159,7 @@ class Grid:
 
     def _paint_cell (self, xcell, ycell, dc):
 
-        step = self._xsize / self._xcells * self._zoom_factor / 100
+        step = self._xsize / self._xcells
 
         px = xcell * step
         py = ycell * step
