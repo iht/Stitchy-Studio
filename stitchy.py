@@ -25,7 +25,7 @@
 from pystitchy.main import MyApp
 
 def run():
-    app = MyApp('stitchy_gui.xrc')
+    app = MyApp('stitchy_gui.xrc','data/colors.txt')
     app.MainLoop()
 
 if '__main__' == __name__:
