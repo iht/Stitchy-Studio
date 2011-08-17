@@ -32,6 +32,9 @@ class MyApp(wx.App):
         self._scroll_rate = 10
         self._erase_tool = False
         self._grid = Grid()
+
+        self._operations = []
+        self._max_undo = 100
         
         wx.App.__init__ (self)
 
@@ -135,6 +138,8 @@ class MyApp(wx.App):
             self._panel.DoPrepareDC (dc)
 
             self._grid.add_cell (mousex, mousey, dc, self.current_color, self._erase_tool)
+            # Add operation for undo and redo
+            self._operations.append ((mousex, mousey, self.current_color, self._erase_tool))
             
         event.Skip()
 
