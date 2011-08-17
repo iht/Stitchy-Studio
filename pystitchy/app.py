@@ -30,6 +30,7 @@ class MyApp(wx.App):
         self._xrcfn = xrcfn
         self._colorsfn = colorsfn
         self._scroll_rate = 10
+        self._erase_tool = False
         self._grid = Grid()
         
         wx.App.__init__ (self)
@@ -72,8 +73,10 @@ class MyApp(wx.App):
         self._panel.SetScrollRate (self._scroll_rate, self._scroll_rate)
         self._panel.SetVirtualSize (self._grid.get_size ())
 
-        self._toolbar = self._frame.GetToolBar()
-
+        self._toolbar = self._frame.GetToolBar () 
+        self._toolbar.ToggleTool (xrc.XRCID('editgrid'), not self._erase_tool)
+        self._toolbar.ToggleTool (xrc.XRCID('erase'), self._erase_tool)
+        
         color_choice_id = 54 # Random int
         color_list = []
         for k in self._colors.keys():
@@ -93,6 +96,8 @@ class MyApp(wx.App):
         self._panel.Bind(wx.EVT_MOUSE_EVENTS, self._print_cell)
         self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomout'))
         self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomin'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_edit, id = xrc.XRCID('editgrid'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._set_edit, id = xrc.XRCID('erase'))
         self._toolbar.Bind,wx.EVT_CHOICE(self, color_choice_id, self._change_color)
         
         self._frame.SetSize ((800,600))
@@ -129,7 +134,7 @@ class MyApp(wx.App):
             dc = wx.ClientDC (event.GetEventObject())
             self._panel.DoPrepareDC (dc)
 
-            self._grid.add_cell (mousex, mousey, dc, self.current_color)
+            self._grid.add_cell (mousex, mousey, dc, self.current_color, self._erase_tool)
             
         event.Skip()
 
@@ -146,4 +151,16 @@ class MyApp(wx.App):
         
         self._panel.SetScrollRate(size[0]/10, size[1]/10)
         self._panel.Refresh()
+        event.Skip()
+
+    def _set_edit (self, event):
+
+        if event.GetId() == xrc.XRCID('editgrid'):
+            self._erase_tool = False
+        elif event.GetId() == xrc.XRCID('erase'):
+            self._erase_tool = True
+
+        self._toolbar.ToggleTool (xrc.XRCID('editgrid'), not self._erase_tool)
+        self._toolbar.ToggleTool (xrc.XRCID('erase'), self._erase_tool)
+            
         event.Skip()

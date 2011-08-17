@@ -82,7 +82,7 @@ class Grid:
             dc.DrawLine(self._xoffset + xsize, self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
         # Draw bold lines
-        dc.SetPen (wx.Pen(wx.BLACK,3))
+        dc.SetPen (wx.Pen(wx.BLACK,1))
         for x in range((self._xcells)/10+1):
             xsize = x*boldstep
             ysize = step * self._ycells
@@ -98,7 +98,7 @@ class Grid:
             dc.DrawLine(self._xoffset, ysize + self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
         # Draw bold lines
-        dc.SetPen (wx.Pen(wx.BLACK,3))
+        dc.SetPen (wx.Pen(wx.BLACK,1))
         for y in range((self._ycells)/10+1):
             ysize = y*boldstep
             xsize = self._xcells*step
@@ -110,7 +110,7 @@ class Grid:
                 if self._cells[x][y]:
                     self._paint_cell (x, y, dc, self._colors[(x,y)])
             
-    def add_cell (self, x, y, dc, color):
+    def add_cell (self, x, y, dc, color, erase = False):
 
         step = self._xsize / self._xcells
         
@@ -118,23 +118,29 @@ class Grid:
         ycell = int((y - self._yoffset)/step)
 
 
-        if xcell > 0 and ycell > 0 and xcell < self._xcells and ycell < self._ycells:
-            self._cells[xcell][ycell] = True
-            self._colors[(xcell,ycell)] = color
-            self._paint_cell (xcell, ycell, dc, color)
-
-    def _paint_cell (self, xcell, ycell, dc, color):
+        if not erase:
+            if xcell >= 0 and ycell >= 0 and xcell < self._xcells and ycell < self._ycells:
+                self._cells[xcell][ycell] = True
+                self._colors[(xcell,ycell)] = color
+                self._paint_cell (xcell, ycell, dc, color)
+        else:
+            if xcell >= 0 and ycell >= 0 and xcell < self._xcells and ycell < self._ycells:
+                self._cells[xcell][ycell] = False
+                self._colors[(xcell,ycell)] = None
+                self._paint_cell (xcell, ycell, dc, color, erase)
+                
+    def _paint_cell (self, xcell, ycell, dc, color, erase = False):
 
         step = self._xsize / self._xcells
 
         px = xcell * step + self._xoffset
         py = ycell * step + self._yoffset
 
-        if color:
+        if not erase:
             dc.SetPen (wx.Pen(color))
             dc.SetBrush (wx.Brush (color))
         else:
-            dc.SetPen (wx.RED_PEN)
-            dc.SetBrush (wx.RED_BRUSH)
+            dc.SetPen (wx.WHITE_PEN)
+            dc.SetBrush (wx.WHITE_BRUSH)
 
         dc.DrawRectangle(px + 1,py + 1,step - 1,step - 1)
