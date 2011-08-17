@@ -70,7 +70,7 @@ class MyApp(wx.App):
         self._frame = self._res.LoadFrame (None,'MyMainFrame')
         self._panel = xrc.XRCCTRL (self._frame, 'MainPanel')
         self._panel.SetScrollRate (self._scroll_rate, self._scroll_rate)
-        self._panel.SetVirtualSize ((1200,800))
+        self._panel.SetVirtualSize (self._grid.get_size ())
 
         self._toolbar = self._frame.GetToolBar()
 

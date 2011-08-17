@@ -32,6 +32,9 @@ class Grid:
 
         self._xsize = 1200
         self._ysize = 800
+        self._xoffset = self._xsize / self._xcells * 5
+        self._yoffset = self._xoffset
+
 
         self._zoom_factor = 100
 
@@ -50,15 +53,21 @@ class Grid:
 
         self._xsize = self._xsize - self._zoom_factor
         self._ysize = self._ysize - self._zoom_factor
+
+        self._xoffset = self._xsize / self._xcells * 5
+        self._yoffset = self._xoffset
         
     def increase_zoom (self):
 
         self._xsize = self._xsize + self._zoom_factor
         self._ysize = self._ysize + self._zoom_factor
 
+        self._xoffset = self._xsize / self._xcells * 5
+        self._yoffset = self._xoffset
+        
     def get_size (self):
 
-        return (self._xsize, self._ysize)
+        return (self._xsize + self._xoffset, self._ysize + self._yoffset)
     
     def draw_grid(self, dc):
 
@@ -70,14 +79,14 @@ class Grid:
         for x in range(self._xcells+1):
             xsize = x*step
             ysize = step * self._ycells
-            dc.DrawLine(xsize, 0, xsize, ysize)
+            dc.DrawLine(self._xoffset + xsize, self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
         # Draw bold lines
         dc.SetPen (wx.Pen(wx.BLACK,3))
         for x in range((self._xcells)/10+1):
             xsize = x*boldstep
             ysize = step * self._ycells
-            dc.DrawLine(xsize, 0, xsize, ysize)
+            dc.DrawLine(xsize + self._xoffset, self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
             
         # Horizontal lines
@@ -86,14 +95,14 @@ class Grid:
         for y in range(self._ycells+1):
             ysize = y*step
             xsize = self._xcells*step
-            dc.DrawLine(0, ysize, xsize, ysize)
+            dc.DrawLine(self._xoffset, ysize + self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
         # Draw bold lines
         dc.SetPen (wx.Pen(wx.BLACK,3))
         for y in range((self._ycells)/10+1):
             ysize = y*boldstep
             xsize = self._xcells*step
-            dc.DrawLine(0, ysize, xsize, ysize)
+            dc.DrawLine(self._xoffset, ysize + self._yoffset, xsize + self._xoffset, ysize + self._yoffset)
 
         for x in range(self._xcells):
             for y in range(self._ycells):
@@ -105,19 +114,21 @@ class Grid:
 
         step = self._xsize / self._xcells
         
-        xcell = int(x/step)
-        ycell = int(y/step)
+        xcell = int((x - self._xoffset)/step)
+        ycell = int((y - self._yoffset)/step)
 
-        self._cells[xcell][ycell] = True
-        self._colors[(xcell,ycell)] = color
-        self._paint_cell (xcell, ycell, dc, color)
+
+        if xcell > 0 and ycell > 0 and xcell < self._xcells and ycell < self._ycells:
+            self._cells[xcell][ycell] = True
+            self._colors[(xcell,ycell)] = color
+            self._paint_cell (xcell, ycell, dc, color)
 
     def _paint_cell (self, xcell, ycell, dc, color):
 
         step = self._xsize / self._xcells
 
-        px = xcell * step
-        py = ycell * step
+        px = xcell * step + self._xoffset
+        py = ycell * step + self._yoffset
 
         if color:
             dc.SetPen (wx.Pen(color))
@@ -126,4 +137,4 @@ class Grid:
             dc.SetPen (wx.RED_PEN)
             dc.SetBrush (wx.RED_BRUSH)
 
-        dc.DrawRectangle(px+1,py+1,step - 2,step - 2)
+        dc.DrawRectangle(px + 1,py + 1,step - 1,step - 1)
