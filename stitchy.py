@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-from pystitchy.main import MyApp
+from pystitchy.app import MyApp
 
 def run():
     app = MyApp('stitchy_gui.xrc','data/colors.txt')
