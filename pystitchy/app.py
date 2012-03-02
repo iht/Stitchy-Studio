@@ -34,6 +34,8 @@ class MyApp(wx.App):
         self._grid = Grid()
 
         self._operations = []
+        self._mouse_pos = []
+        self._current_operation = None
         self._max_undo = 100
         
         wx.App.__init__ (self)
@@ -97,6 +99,8 @@ class MyApp(wx.App):
         
         self._panel.Bind(wx.EVT_PAINT, self.OnPaint)
         self._panel.Bind(wx.EVT_MOUSE_EVENTS, self._print_cell)
+        self._toolbar.Bind(wx.EVT_TOOL, self._undo,     id = xrc.XRCID('undo'))
+        self._toolbar.Bind(wx.EVT_TOOL, self._redo,     id = xrc.XRCID('redo'))
         self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomout'))
         self._toolbar.Bind(wx.EVT_TOOL, self._set_zoom, id = xrc.XRCID('zoomin'))
         self._toolbar.Bind(wx.EVT_TOOL, self._set_edit, id = xrc.XRCID('editgrid'))
@@ -137,12 +141,62 @@ class MyApp(wx.App):
             dc = wx.ClientDC (event.GetEventObject())
             self._panel.DoPrepareDC (dc)
 
-            self._grid.add_cell (mousex, mousey, dc, self.current_color, self._erase_tool)
+            if self._erase_tool:
+                current_color = self._grid.get_color_by_mouse(mousex, mousey)
+            else:
+                current_color = self.current_color
+                
+            xcell, ycell = self._grid.add_cell_by_mouse (mousex, mousey, dc, current_color, self._erase_tool)
             # Add operation for undo and redo
-            self._operations.append ((mousex, mousey, self.current_color, self._erase_tool))
-            
+            op = (xcell, ycell, current_color, self._erase_tool)
+            if (len(self._operations) == 0) or (not op in self._operations):
+                self._operations.append (op)
+                self._mouse_pos.append  ((mousex, mousey))
+                self._current_operation = len(self._operations) - 1
+                
         event.Skip()
 
+    def _undo (self, event):
+
+        if self._current_operation:
+            op = self._operations[self._current_operation]
+            mousex, mousey = self._mouse_pos[self._current_operation]
+            mousex, mousey = self._panel.CalcScrolledPosition (mousex, mousey)
+            # Debug
+            print "Undoing %s" % str(op)
+            xcell, ycell, color, erase = op
+            dc = wx.ClientDC (self._panel)
+
+            if color:
+                self._grid.add_cell_by_mouse (mousex, mousey, dc, color, not erase)
+            else:
+                self._grid.add_cell_by_mouse (mousex, mousey, dc, color, True)
+                
+            self._current_operation = self._current_operation - 1
+            if self._current_operation < 0:
+                self._current_operation = None
+
+    def _redo (self, event):
+        if not self._current_operation:
+            self._current_operation = 0
+
+        try:
+            op = self._operations[self._current_operation]
+            mousex, mousey = self._mouse_pos[self._current_operation]
+            mousex, mousey = self._panel.CalcScrolledPosition (mousex, mousey)
+            print "Redoing %s" % str(op)
+            xcell, ycell, color, erase = op
+            dc = wx.ClientDC (self._panel)
+            self._grid.add_cell_by_mouse (mousex, mousey, dc, color, erase)
+
+            self._current_operation += 1
+            if self._current_operation >= len(self._operations):
+                self._current_operation = len(self._operations) - 1
+        except IndexError:
+            # No actions to redo
+            pass
+
+        
     def _set_zoom (self, event):
 
         if event.GetId() == xrc.XRCID('zoomout'):

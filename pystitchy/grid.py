@@ -110,13 +110,18 @@ class Grid:
                 if self._cells[x][y]:
                     self._paint_cell (x, y, dc, self._colors[(x,y)])
             
-    def add_cell (self, x, y, dc, color, erase = False):
+    def add_cell_by_mouse (self, x, y, dc, color, erase = False):
 
         step = self._xsize / self._xcells
         
         xcell = int((x - self._xoffset)/step)
         ycell = int((y - self._yoffset)/step)
 
+        self.add_cell (xcell, ycell, dc, color, erase)
+        
+        return (xcell, ycell)
+
+    def add_cell (self, xcell, ycell, dc, color, erase):
 
         if not erase:
             if xcell >= 0 and ycell >= 0 and xcell < self._xcells and ycell < self._ycells:
@@ -128,6 +133,18 @@ class Grid:
                 self._cells[xcell][ycell] = False
                 self._colors[(xcell,ycell)] = None
                 self._paint_cell (xcell, ycell, dc, color, erase)
+
+    def get_color_by_mouse (self, x, y):
+        
+        step = self._xsize / self._xcells
+        
+        xcell = int((x - self._xoffset)/step)
+        ycell = int((y - self._yoffset)/step)
+
+        try:
+            return self._colors[(xcell, ycell)]
+        except KeyError:
+            return None
                 
     def _paint_cell (self, xcell, ycell, dc, color, erase = False):
 
