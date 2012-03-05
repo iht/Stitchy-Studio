@@ -22,6 +22,7 @@
 import wx
 from wx import xrc
 from grid import Grid
+from image_importer import ImageImporter
 
 class MyApp(wx.App):
 
@@ -34,7 +35,6 @@ class MyApp(wx.App):
         self._grid = Grid()
 
         self._operations = []
-        #self._mouse_pos = []
         self._current_operation = None
         self._max_undo = 100
         
@@ -106,6 +106,8 @@ class MyApp(wx.App):
         self._toolbar.Bind(wx.EVT_TOOL, self._set_edit, id = xrc.XRCID('editgrid'))
         self._toolbar.Bind(wx.EVT_TOOL, self._set_edit, id = xrc.XRCID('erase'))
         self._toolbar.Bind,wx.EVT_CHOICE(self, color_choice_id, self._change_color)
+
+        self._frame.Bind(wx.EVT_MENU, self._import_image, id = xrc.XRCID('importimage'))
         
         self._frame.SetSize ((800,600))
         self._panel.FitInside()
@@ -114,6 +116,30 @@ class MyApp(wx.App):
         self.SetTopWindow (self._frame)
         self._frame.Show()
 
+
+    def _import_image (self, event):
+
+        path = wx.FileSelector ('Choose an image',
+                               wildcard = "BMP|*.bmp|GIF|*.gif|JPEG|*.jp*g|PNG|*.png|PCX|*.pcx|TIFF|*.tiff|Other|*",
+                               flags = wx.FD_FILE_MUST_EXIST,
+                               parent = self._frame)
+
+        importer = ImageImporter ()
+        importer.load_image (path)
+        importer.scale_image()
+        
+        height, width = importer.get_size ()
+
+        dc = wx.ClientDC (self._panel)
+        self._panel.DoPrepareDC (dc)
+
+        for x in range (0, width):
+            for y in range (0, height):
+
+                color = importer.get_color (x, y)
+                self._grid.add_cell (x, y, dc, color, False)
+        
+        event.Skip()
 
     def _change_color (self, event):
 
@@ -152,7 +178,6 @@ class MyApp(wx.App):
             op = (xcell, ycell, current_color, self._erase_tool)
             if (len(self._operations) == 0) or (not op in self._operations):
                 self._operations.append (op)
-                #self._mouse_pos.append  ((mousex, mousey))
                 self._current_operation = len(self._operations) - 1
                 
         event.Skip()
@@ -162,17 +187,13 @@ class MyApp(wx.App):
         if self._current_operation:
             op = self._operations[self._current_operation]
             
-            # Debug
-            print "Undoing %s" % str(op)
             xcell, ycell, color, erase = op
             dc = wx.ClientDC (self._panel)
             self._panel.DoPrepareDC (dc)
 
             if color:
-                #self._grid.add_cell_by_mouse (mousex, mousey, dc, color, not erase)
                 self._grid.add_cell (xcell, ycell, dc, color, not erase)
             else:
-                #self._grid.add_cell_by_mouse (mousex, mousey, dc, color, True)
                 self._grid.add_cell (xcell, ycell, dc, color, True)
                 
             self._current_operation = self._current_operation - 1
@@ -185,7 +206,6 @@ class MyApp(wx.App):
 
         try:
             op = self._operations[self._current_operation]
-            print "Redoing %s" % str(op)
             xcell, ycell, color, erase = op
 
             dc = wx.ClientDC (self._panel)
