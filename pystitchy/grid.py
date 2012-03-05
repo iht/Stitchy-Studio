@@ -110,16 +110,6 @@ class Grid:
                 if self._cells[x][y]:
                     self._paint_cell (x, y, dc, self._colors[(x,y)])
             
-    def add_cell_by_mouse (self, x, y, dc, color, erase = False):
-
-        step = self._xsize / self._xcells
-        
-        xcell = int((x - self._xoffset)/step)
-        ycell = int((y - self._yoffset)/step)
-
-        self.add_cell (xcell, ycell, dc, color, erase)
-        
-        return (xcell, ycell)
 
     def add_cell (self, xcell, ycell, dc, color, erase):
 
@@ -145,7 +135,26 @@ class Grid:
             return self._colors[(xcell, ycell)]
         except KeyError:
             return None
-                
+
+    def mouse2cell (self, mousex, mousey):
+
+        step = self._xsize / self._xcells
+        
+        xcell = int((mousex - self._xoffset)/step)
+        ycell = int((mousey - self._yoffset)/step)
+        
+        return (xcell, ycell)
+
+    def cell2mouse (self, xcell, ycell):
+
+        step = self._xsize / self._xcells
+
+        mousex = int(xcell*step + self._xoffset)
+        mousey = int(ycell*step + self._yoffset)
+
+        return (mousex, mousey)
+        
+        
     def _paint_cell (self, xcell, ycell, dc, color, erase = False):
 
         step = self._xsize / self._xcells

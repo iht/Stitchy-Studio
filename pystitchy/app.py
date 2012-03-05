@@ -34,7 +34,7 @@ class MyApp(wx.App):
         self._grid = Grid()
 
         self._operations = []
-        self._mouse_pos = []
+        #self._mouse_pos = []
         self._current_operation = None
         self._max_undo = 100
         
@@ -146,12 +146,13 @@ class MyApp(wx.App):
             else:
                 current_color = self.current_color
                 
-            xcell, ycell = self._grid.add_cell_by_mouse (mousex, mousey, dc, current_color, self._erase_tool)
+            xcell, ycell = self._grid.mouse2cell (mousex, mousey)
+            self._grid.add_cell (xcell, ycell, dc, current_color, self._erase_tool)
             # Add operation for undo and redo
             op = (xcell, ycell, current_color, self._erase_tool)
             if (len(self._operations) == 0) or (not op in self._operations):
                 self._operations.append (op)
-                self._mouse_pos.append  ((mousex, mousey))
+                #self._mouse_pos.append  ((mousex, mousey))
                 self._current_operation = len(self._operations) - 1
                 
         event.Skip()
@@ -160,17 +161,19 @@ class MyApp(wx.App):
 
         if self._current_operation:
             op = self._operations[self._current_operation]
-            mousex, mousey = self._mouse_pos[self._current_operation]
-            mousex, mousey = self._panel.CalcScrolledPosition (mousex, mousey)
+            
             # Debug
             print "Undoing %s" % str(op)
             xcell, ycell, color, erase = op
             dc = wx.ClientDC (self._panel)
+            self._panel.DoPrepareDC (dc)
 
             if color:
-                self._grid.add_cell_by_mouse (mousex, mousey, dc, color, not erase)
+                #self._grid.add_cell_by_mouse (mousex, mousey, dc, color, not erase)
+                self._grid.add_cell (xcell, ycell, dc, color, not erase)
             else:
-                self._grid.add_cell_by_mouse (mousex, mousey, dc, color, True)
+                #self._grid.add_cell_by_mouse (mousex, mousey, dc, color, True)
+                self._grid.add_cell (xcell, ycell, dc, color, True)
                 
             self._current_operation = self._current_operation - 1
             if self._current_operation < 0:
@@ -182,12 +185,12 @@ class MyApp(wx.App):
 
         try:
             op = self._operations[self._current_operation]
-            mousex, mousey = self._mouse_pos[self._current_operation]
-            mousex, mousey = self._panel.CalcScrolledPosition (mousex, mousey)
             print "Redoing %s" % str(op)
             xcell, ycell, color, erase = op
+
             dc = wx.ClientDC (self._panel)
-            self._grid.add_cell_by_mouse (mousex, mousey, dc, color, erase)
+            self._panel.DoPrepareDC (dc)
+            self._grid.add_cell (xcell, ycell, dc, color, erase)
 
             self._current_operation += 1
             if self._current_operation >= len(self._operations):
