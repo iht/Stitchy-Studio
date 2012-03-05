@@ -23,6 +23,7 @@ import wx
 from wx import xrc
 from grid import Grid
 from image_importer import ImageImporter
+from math import sqrt
 
 class MyApp(wx.App):
 
@@ -37,6 +38,9 @@ class MyApp(wx.App):
         self._operations = []
         self._current_operation = None
         self._max_undo = 100
+
+        self._timer = None
+        self._current_mouse_pos = (-1, -1)
         
         wx.App.__init__ (self)
 
@@ -61,8 +65,53 @@ class MyApp(wx.App):
         self._colors = {}
         for l in ls:
             dmc, name, code = l.split(',')
-            self._colors[dmc] = (code, name)
-    
+            self._colors[dmc] = (code, name)            
+
+    def _find_dmc_color (self, color):
+        for dmc in self._colors.keys():
+            code, name = self._colors[dmc]
+
+            red = int(code[1:3], 16)
+            green = int(code[3:5], 16)
+            blue = int(code[5:7], 16)
+
+            if red == color.Red() and green == color.Green() and blue == color.Blue():
+                return name
+
+        return 'None'
+
+    def _find_closest_dmc_color (self, color):
+
+        distance = 1000
+        
+        red = color.Red()
+        green = color.Green()
+        blue = color.Blue()
+
+        bestred, bestgreen, bestblue = (None, None, None)
+        
+        for dmc in self._colors.keys():
+            code, name = self._colors[dmc]
+
+            dred = int(code[1:3], 16)
+            dgreen = int(code[3:5], 16)
+            dblue = int(code[5:7], 16)
+
+            r = (dred + red) / 2
+            dr = dred - red
+            dg = dgreen - green
+            db = dblue - blue
+
+            ndistance = (2+r/256)*dr**2 + 4*dg**2 + (2+(255-r)/256)*db**2
+            ndistance = sqrt(ndistance)
+            
+            if ndistance < distance:
+                distance = ndistance
+                bestred, bestgreen, bestblue = (dred, dgreen, dblue)
+
+        return wx.Colour (bestred, bestgreen, bestblue)
+            
+            
     def OnPaint (self, event):
 
         dc = wx.PaintDC (event.GetEventObject())
@@ -108,10 +157,16 @@ class MyApp(wx.App):
         self._toolbar.Bind,wx.EVT_CHOICE(self, color_choice_id, self._change_color)
 
         self._frame.Bind(wx.EVT_MENU, self._import_image, id = xrc.XRCID('importimage'))
+
+        self._timer = wx.Timer()
+        self._timer.Bind(wx.EVT_TIMER, self._show_tooltip)
+        
         
         self._frame.SetSize ((800,600))
         self._panel.FitInside()
         self._frame.SetTitle ("Stitchy Studio")
+
+        self._timer.Start(3000,True)
         
         self.SetTopWindow (self._frame)
         self._frame.Show()
@@ -131,13 +186,14 @@ class MyApp(wx.App):
         height, width = importer.get_size ()
 
         dc = wx.ClientDC (self._panel)
+
         self._panel.DoPrepareDC (dc)
 
         for x in range (0, width):
             for y in range (0, height):
-
                 color = importer.get_color (x, y)
-                self._grid.add_cell (x, y, dc, color, False)
+                bestcolor = self._find_closest_dmc_color (color)
+                self._grid.add_cell (x, y, dc, bestcolor, False)
         
         event.Skip()
 
@@ -161,7 +217,16 @@ class MyApp(wx.App):
     def _print_cell (self, event):
 
         mousex, mousey = self._panel.CalcUnscrolledPosition(event.GetX(), event.GetY())
-               
+
+        self._current_mouse_pos = (mousex, mousey)
+        color = self._grid.get_color_by_mouse (mousex, mousey)
+        if not color:
+            color = 'None'
+        else:
+            color = self._find_dmc_color (color)
+            
+        self._statusbar.SetStatusText('Color: %s' % str(color))
+        
         if event.ButtonDown(wx.MOUSE_BTN_LEFT) or event.Dragging():
 
             dc = wx.ClientDC (event.GetEventObject())
@@ -179,6 +244,8 @@ class MyApp(wx.App):
             if (len(self._operations) == 0) or (not op in self._operations):
                 self._operations.append (op)
                 self._current_operation = len(self._operations) - 1
+        elif event.Moving():
+            self._timer.Start(3000,True)
                 
         event.Skip()
 
@@ -245,4 +312,23 @@ class MyApp(wx.App):
         self._toolbar.ToggleTool (xrc.XRCID('editgrid'), not self._erase_tool)
         self._toolbar.ToggleTool (xrc.XRCID('erase'), self._erase_tool)
             
+        event.Skip()
+
+
+    def _show_tooltip (self, event):
+
+        x, y = self._current_mouse_pos
+        
+        color = self._grid.get_color_by_mouse (x, y)
+
+        if color:
+            
+            red = color.Red()
+            green = color.Green()
+            blue = color.Blue()
+        
+            color = self._find_dmc_color (color)            
+            tip = wx.TipWindow (self._frame, "Color: %s\n\nRGB: (%s, %s, %s)\n\nClick tooltip to close" % (str(color),red,green,blue))
+
+        
         event.Skip()
