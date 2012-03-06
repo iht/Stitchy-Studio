@@ -40,7 +40,7 @@ class ImageImporter:
 
         ratio = width / height
 
-        if ratio >= 1.5:
+        if width > height:
             self._image.Rescale (120,80/ratio)
         else:
             self._image.Rescale (ratio*80,80)
