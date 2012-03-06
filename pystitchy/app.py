@@ -76,7 +76,7 @@ class MyApp(wx.App):
             blue = int(code[5:7], 16)
 
             if red == color.Red() and green == color.Green() and blue == color.Blue():
-                return name
+                return '%s #%s' % (name, dmc)
 
         return 'None'
 
