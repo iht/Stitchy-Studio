@@ -47,7 +47,7 @@ class Grid:
 
         for x in range (self._xcells):
             for y in range (self._ycells):
-                self._colors[(x,y)] = None
+                self._colors[(x,y)] = []
         
     def decrease_zoom (self):
 
@@ -108,7 +108,7 @@ class Grid:
             for y in range(self._ycells):
                 
                 if self._cells[x][y]:
-                    self._paint_cell (x, y, dc, self._colors[(x,y)])
+                    self._paint_cell (x, y, dc, self._colors[(x,y)][-1])
             
 
     def add_cell (self, xcell, ycell, dc, color, erase):
@@ -116,13 +116,21 @@ class Grid:
         if not erase:
             if xcell >= 0 and ycell >= 0 and xcell < self._xcells and ycell < self._ycells:
                 self._cells[xcell][ycell] = True
-                self._colors[(xcell,ycell)] = color
+                if not len(self._colors[(xcell,ycell)]):
+                    self._colors[(xcell,ycell)].append(color)
+                elif self._colors[(xcell,ycell)][-1] != color:
+                    self._colors[(xcell,ycell)].append(color)
                 self._paint_cell (xcell, ycell, dc, color)
         else:
             if xcell >= 0 and ycell >= 0 and xcell < self._xcells and ycell < self._ycells:
                 self._cells[xcell][ycell] = False
-                self._colors[(xcell,ycell)] = None
-                self._paint_cell (xcell, ycell, dc, color, erase)
+                if not len(self._colors[(xcell,ycell)]):
+                    self._colors[(xcell,ycell)].append(None)
+                elif self._colors[(xcell,ycell)][-1]:
+                    self._colors[(xcell,ycell)].append(None)
+                self._paint_cell (xcell, ycell, dc, None, erase)
+                
+        return len(self._colors[(xcell,ycell)])-1
 
     def get_color_by_mouse (self, x, y):
         
@@ -132,9 +140,21 @@ class Grid:
         ycell = int((y - self._yoffset)/step)
 
         try:
-            return self._colors[(xcell, ycell)]
+            c = self._colors[(xcell, ycell)][-1]
+            if c:
+                # Return a copy of the color, otherwise two consecutive colors in the same
+                # cell would have the same colour, due to Python's pass by reference
+                r, g, b = c.Get()
+                return wx.Colour(r, g, b)
+            else:
+                return c
         except KeyError:
             return None
+        except IndexError:
+            return None
+
+    def get_color_by_index (self, xcell, ycell, i):
+        return self._colors[(xcell,ycell)][i]
 
     def mouse2cell (self, mousex, mousey):
 

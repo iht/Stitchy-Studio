@@ -48,11 +48,13 @@ class MyApp(wx.App):
 
         # Colors must be imported before creating the frame
         self._import_colors ()
-        self.current_color = None
+        self._current_color = None
         
         # Create main frame
         self._res = xrc.XmlResource (self._xrcfn)
         self._init_frame()
+        # Load palette selector dialog
+        self._palette_dialog = self._res.LoadDialog(self._frame, "SelectColorPaletteDialog")
         
         return True
 
@@ -178,23 +180,25 @@ class MyApp(wx.App):
                                wildcard = "BMP|*.bmp|GIF|*.gif|JPEG|*.jp*g|PNG|*.png|PCX|*.pcx|TIFF|*.tiff|Other|*",
                                flags = wx.FD_FILE_MUST_EXIST,
                                parent = self._frame)
+                            
+        if path:                                
+            self._palette_dialog.ShowModal()
+            importer = ImageImporter ()
+            importer.load_image (path)
+            importer.scale_image()
+            
+            height, width = importer.get_size ()
 
-        importer = ImageImporter ()
-        importer.load_image (path)
-        importer.scale_image()
-        
-        height, width = importer.get_size ()
+            dc = wx.ClientDC (self._panel)
 
-        dc = wx.ClientDC (self._panel)
+            self._panel.DoPrepareDC (dc)
 
-        self._panel.DoPrepareDC (dc)
-
-        for x in range (0, width):
-            for y in range (0, height):
-                color = importer.get_color (x, y)
-                bestcolor = self._find_closest_dmc_color (color)
-                self._grid.add_cell (x, y, dc, bestcolor, False)
-        
+            for x in range (0, width):
+                for y in range (0, height):
+                    color = importer.get_color (x, y)
+                    bestcolor = self._find_closest_dmc_color (color)
+                    self._grid.add_cell (x, y, dc, bestcolor, False)
+            
         event.Skip()
 
     def _change_color (self, event):
@@ -209,7 +213,7 @@ class MyApp(wx.App):
         green = int(color[3:5], 16)
         blue = int(color[5:7], 16)
 
-        self.current_color = wx.Colour (red=red, green=green, blue=blue)
+        self._current_color = wx.Colour (red=red, green=green, blue=blue)
 
         if event:
             event.Skip()
@@ -221,29 +225,25 @@ class MyApp(wx.App):
         self._current_mouse_pos = (mousex, mousey)
         color = self._grid.get_color_by_mouse (mousex, mousey)
         if not color:
-            color = 'None'
+            color_name = 'None'
         else:
-            color = self._find_dmc_color (color)
+            color_name = self._find_dmc_color (color)
             
-        self._statusbar.SetStatusText('Color: %s' % str(color))
+        self._statusbar.SetStatusText('Color: %s' % str(color_name))
         
-        if event.ButtonDown(wx.MOUSE_BTN_LEFT) or event.Dragging():
+        if event.GetButton() == wx.MOUSE_BTN_LEFT or event.Dragging():
 
             dc = wx.ClientDC (event.GetEventObject())
             self._panel.DoPrepareDC (dc)
-
-            if self._erase_tool:
-                current_color = self._grid.get_color_by_mouse(mousex, mousey)
-            else:
-                current_color = self.current_color
                 
             xcell, ycell = self._grid.mouse2cell (mousex, mousey)
-            self._grid.add_cell (xcell, ycell, dc, current_color, self._erase_tool)
+            color_index = self._grid.add_cell (xcell, ycell, dc, self._current_color, self._erase_tool)
             # Add operation for undo and redo
-            op = (xcell, ycell, current_color, self._erase_tool)
+            op = (xcell, ycell, color_index, self._erase_tool)
             if (len(self._operations) == 0) or (not op in self._operations):
                 self._operations.append (op)
                 self._current_operation = len(self._operations) - 1
+
         elif event.Moving():
             self._timer.Start(3000,True)
                 
@@ -254,15 +254,22 @@ class MyApp(wx.App):
         if self._current_operation:
             op = self._operations[self._current_operation]
             
-            xcell, ycell, color, erase = op
+            xcell, ycell,  color_index, erase = op
+
             dc = wx.ClientDC (self._panel)
             self._panel.DoPrepareDC (dc)
 
-            if color:
-                self._grid.add_cell (xcell, ycell, dc, color, not erase)
+            if erase:
+                if color_index > 0:
+                    cur_color = self._grid.get_color_by_index (xcell, ycell, color_index-1) 
+                    self._grid.add_cell (xcell, ycell, dc, cur_color, False)                    
             else:
-                self._grid.add_cell (xcell, ycell, dc, color, True)
-                
+                if color_index > 0:
+                    cur_color = self._grid.get_color_by_index (xcell, ycell, color_index-1)
+                    self._grid.add_cell (xcell, ycell, dc, cur_color, False)                    
+                else:
+                    self._grid.add_cell (xcell, ycell, dc, None, True)                    
+            
             self._current_operation = self._current_operation - 1
             if self._current_operation < 0:
                 self._current_operation = None
@@ -272,16 +279,22 @@ class MyApp(wx.App):
             self._current_operation = 0
 
         try:
-            op = self._operations[self._current_operation]
-            xcell, ycell, color, erase = op
+            op = self._operations[self._current_operation+1]
+            xcell, ycell, color_index, erase = op
 
+            cur_color = self._grid.get_color_by_index (xcell, ycell, color_index)
+            
             dc = wx.ClientDC (self._panel)
             self._panel.DoPrepareDC (dc)
-            self._grid.add_cell (xcell, ycell, dc, color, erase)
+            if erase:
+                self._grid.add_cell (xcell, ycell, dc, None, True)
+            else:
+                self._grid.add_cell (xcell, ycell, dc, cur_color, False)
 
             self._current_operation += 1
-            if self._current_operation >= len(self._operations):
-                self._current_operation = len(self._operations) - 1
+            
+            #if self._current_operation >= len(self._operations):
+            #    self._current_operation = len(self._operations) - 1
         except IndexError:
             # No actions to redo
             pass
