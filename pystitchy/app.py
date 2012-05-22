@@ -55,9 +55,93 @@ class MyApp(wx.App):
         self._init_frame()
         # Load palette selector dialog
         self._palette_dialog = self._res.LoadDialog(self._frame, "SelectColorPaletteDialog")
+
+        self._avlb_id = 1234
+        self._available_listbox = wx.SimpleHtmlListBox(
+                                  self._palette_dialog,
+                                  self._avlb_id,
+                                  style=wx.HLB_MULTIPLE,
+                                  size=(230,460)) 
+
+        self._selb_id = 1235
+        self._select_listbox = wx.SimpleHtmlListBox(
+                                  self._palette_dialog,
+                                  self._selb_id,
+                                  style=wx.HLB_MULTIPLE,
+                                  size=(230,460))
         
+        for dmc in self._colors.keys():
+            code, name = self._colors[dmc]
+            self._available_listbox.Append('<table><tr><td bgcolor="%s" colspan="15" nowrap> </td><td>%s #%s</td></tr></table>' % (code[0:7], name, dmc))
+            
+
+        self._res.AttachUnknownControl(
+                             'AvailableColorListUnknown',
+                             self._available_listbox,
+                             self._palette_dialog)
+        
+        self._res.AttachUnknownControl(
+                             'SelectedColorListUnknown',
+                             self._select_listbox,
+                             self._palette_dialog)
+
+        
+        self._palette_dialog.Bind(wx.EVT_BUTTON, self._add_colors_to_palette, id = xrc.XRCID ('AddColorBtn'))
+        self._palette_dialog.Bind(wx.EVT_BUTTON, self._remove_colors_from_palette, id = xrc.XRCID ('RemoveColorBtn'))
+        self._palette_dialog.Bind(wx.EVT_BUTTON, self._set_current_palette, id = xrc.XRCID ('PaletteAcceptBtn'))
+            
         return True
 
+    def _set_current_palette (self, event):
+
+        dmcs = [x.split("#")[2].split("<")[0] for x in self._select_listbox.GetStrings()]
+        self._current_palette = {}
+        for d in dmcs:
+            self._current_palette[d] = self._colors[d]
+
+        event.Skip()
+
+        self._palette_dialog.Show(False)
+        
+    def _add_colors_to_palette (self, event):
+
+        remove = []
+        item, cookie = self._available_listbox.GetFirstSelected()
+
+        while wx.NOT_FOUND != item:
+            s = self._available_listbox.GetString(item)
+            self._select_listbox.Append(s)
+            remove.append(item)
+            item, cookie = self._available_listbox.GetNextSelected(cookie)
+
+
+        for r in remove:
+            self._available_listbox.Delete(r)
+
+        self._available_listbox.DeselectAll()
+        self._select_listbox.DeselectAll()
+
+        event.Skip()
+            
+    def _remove_colors_from_palette (self, event):
+
+        remove = []
+        item, cookie = self._select_listbox.GetFirstSelected()
+        
+        while wx.NOT_FOUND != item:
+            s = self._select_listbox.GetString(item)
+            self._available_listbox.Append(s)
+            remove.append(item)
+            item, cookie = self._select_listbox.GetNextSelected(cookie)
+
+        for r in remove:
+            self._select_listbox.Delete(r)        
+
+        self._select_listbox.DeselectAll()
+        self._available_listbox.DeselectAll()
+
+        event.Skip()
+        
     def _import_colors (self):
 
         f = open(self._colorsfn, 'r')
@@ -69,6 +153,8 @@ class MyApp(wx.App):
             dmc, name, code = l.split(',')
             self._colors[dmc] = (code, name)            
 
+        self._current_palette = self._colors
+        
     def _find_dmc_color (self, color):
         for dmc in self._colors.keys():
             code, name = self._colors[dmc]
@@ -92,8 +178,8 @@ class MyApp(wx.App):
 
         bestred, bestgreen, bestblue = (None, None, None)
         
-        for dmc in self._colors.keys():
-            code, name = self._colors[dmc]
+        for dmc in self._current_palette.keys():
+            code, name = self._current_palette[dmc]
 
             dred = int(code[1:3], 16)
             dgreen = int(code[3:5], 16)
@@ -178,10 +264,11 @@ class MyApp(wx.App):
 
         path = wx.FileSelector ('Choose an image',
                                wildcard = "BMP|*.bmp|GIF|*.gif|JPEG|*.jp*g|PNG|*.png|PCX|*.pcx|TIFF|*.tiff|Other|*",
-                               flags = wx.FD_FILE_MUST_EXIST,
+                               flags = wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
                                parent = self._frame)
                             
-        if path:                                
+        if path:
+            self._palette_dialog.Fit()
             self._palette_dialog.ShowModal()
             importer = ImageImporter ()
             importer.load_image (path)
@@ -293,8 +380,6 @@ class MyApp(wx.App):
 
             self._current_operation += 1
             
-            #if self._current_operation >= len(self._operations):
-            #    self._current_operation = len(self._operations) - 1
         except IndexError:
             # No actions to redo
             pass
